@@ -2,7 +2,7 @@
   <div>
     <h1>Page Loaded with id : {{ idUrl }}</h1>
     <h2>{{ clientname }}</h2>
-    <table class="table table-responsive">
+    <table class="table table-responsive blue">
       <thead>
         <tr>
           <td></td>
@@ -13,13 +13,14 @@
         <tr v-for="(row, idx1) in items">
           <th scope="row">{{ char[idx1] }}</th>
           <td class="table-success" v-for="(col, idx2) in row">
-             <button>{{ items[idx1][idx2] }}</button>
+             <button @click="handleClick(idx1, idx2)">{{ items[idx1][idx2] }}</button>
           </td>
         </tr>
       </tbody>
     </table>
     <div id="app">
       <span v-html="info"></span>
+      <span v-html="status"></span>
     </div>
   </div>
 </template>
@@ -28,7 +29,10 @@
 export default {
   data() {
     return {
+      start: true,
+      counter: 0,
       info: "",
+      status: "",
       clientname : "",
       char: ['A','B','C','D','E','F','G','H','I','J'],
       items:[
@@ -44,7 +48,8 @@ export default {
          ['J1','J2','J3','J4','J5','J6','J7','J8','J9','J10'],
       ],
       ships: [5, 4, 3, 3, 2],
-      shipNames: ['Carrier', 'Battleship', 'Destroyer', 'Submarine', 'Patrol Boat']
+      shipNames: ['Carrier', 'Battleship', 'Destroyer', 'Submarine', 'Patrol Boat'],
+      shipCoord: [ [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1] ]
     }
   },
   computed: {
@@ -66,13 +71,46 @@ export default {
       var i = 0
       var content = ""
       for (; i < this.ships.length; ++i) {
-          content += "<div>" + this.ships[i] + ' ' +this.shipNames[i] + "</div>"
+          content += "<div>Length: " + this.ships[i] + ' ; Name: ' + this.shipNames[i] + ' ; Coord : ' + this.shipCoord[2*i ] + ' , ' + this.shipCoord[2 * i + 1] + "</div>"
       }
       this.info = content
+      if (this.counter < this.shipCoord.length) {
+        this.status = "<div style=\"color: red; text-align: center;\">Choose a starting point for your " + (this.counter % 2 == 0 ? this.shipNames[this.counter/2] : this.shipNames[this.counter/2-0.5]) + "</div>"
+      } else {
+          this.status = "<div style=\"color: red; text-align: center;\">All boats placed</div>"
+        }
+      // TODO: handle click on the buttons
+    },
+    handleClick: function(x, y) {
+      if (this.counter < this.shipCoord.length) {
+        if (this.counter % 2 != 0) {
+          var size = this.ships[this.counter/2-0.5]
+          if (Math.abs(this.shipCoord[this.counter-1][0] - x) != size - 1 && Math.abs(this.shipCoord[this.counter-1][1] - y) != size - 1) {
+            this.status = "<div style=\"color: red; text-align: center;\">" + this.shipNames[(this.counter - 1) /2] + " is misplaced</div>"
+            this.counter--
+            return
+          }
+        }
+        if (this.crossing()) {
+          this.status = "<div style=\"color: red; text-align: center;\">" + this.shipNames[(this.counter - 1) /2] + " is misplaced : over another ship</div>"
+          return
+        }
+        this.shipCoord[this.counter][0] = x
+        this.shipCoord[this.counter][1] = y
+        this.counter++
+        this.putShips()
+      }
+    },
+    crossing: function() {
+      return false;
+      // TODO:
     }
   },
 }
 </script>
 
 <style lang="css" scoped>
+  .blue {
+    color: blue;
+  }
 </style>
