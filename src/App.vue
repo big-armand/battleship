@@ -1,7 +1,7 @@
 <template>
   <div>
     <h1>{{ title }}</h1>
-    <a v-bind:href="url/* + getId()*/">Click me!</a>
+    <a v-bind:href="url + getId()">Click me!</a>
   </div>
 </template>
 
@@ -16,7 +16,7 @@ export default {
   },
   methods: {
     getId() {
-      return ++id;
+      return Math.ceil(Math.random()*100000);
     }
   }
 };
