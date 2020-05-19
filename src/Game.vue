@@ -2,6 +2,8 @@
   <div>
     <h1>Page Loaded with id : {{ idUrl }}</h1>
     <h2>{{ clientname }}</h2>
+    <h2>Opponent's name : {{opponentName}}</h2>
+    <h2>Test : {{test}}</h2>
     <table class="table table-responsive blue">
       <thead>
         <tr>
@@ -12,8 +14,8 @@
       <tbody>
         <tr v-for="(row, idx1) in items">
           <th scope="row">{{ char[idx1] }}</th>
-          <td class="table-success" v-for="(col, idx2) in row">
-             <button @click="handleClick(idx1, idx2)">{{ items[idx1][idx2] }}</button>
+          <td v-for="(col, idx2) in row">
+             <button :id="items[idx1][idx2]" :class="computeClasses " @click="handleClick(idx1, idx2)">{{ items[idx1][idx2] }}</button>
           </td>
         </tr>
       </tbody>
@@ -22,11 +24,18 @@
       <span v-html="info"></span>
       <span v-html="status"></span>
     </div>
+    <div @name="console.log('WORKED')">
+
+    </div>
   </div>
 </template>
 
 <script>
 export default {
+  props: [
+    'test',
+    'name'
+  ],
   data() {
     return {
       start: true,
@@ -34,6 +43,7 @@ export default {
       info: "",
       status: "",
       clientname : "",
+      opponentName: "",
       char: ['A','B','C','D','E','F','G','H','I','J'],
       items:[
          ['A1','A2','A3','A4','A5','A6','A7','A8','A9','A10'],
@@ -48,62 +58,143 @@ export default {
          ['J1','J2','J3','J4','J5','J6','J7','J8','J9','J10'],
       ],
       ships: [5, 4, 3, 3, 2],
+      shipColor: ['yellow', 'blue', 'lightblue', 'pink', 'orange'],
       shipNames: ['Carrier', 'Battleship', 'Destroyer', 'Submarine', 'Patrol Boat'],
-      shipCoord: [ [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1] ]
+      shipCoord: [ [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1] ],
+      carrier: false,
+      battleship: false,
     }
   },
   computed: {
     idUrl: function () {
       return window.location.pathname.split('/game')[1] || 0
     },
-
+    computeClasses: function() {
+      return {marked_c: this.carrier, marked_b: this.battleship}
+    }
   },
   mounted: function() {
     this.askName()
     this.putShips()
+    // while (this.isOn()) {
+    //   this.attack()
+    //   // allow other to attack
+    //   // first one to have name plays first
+    // }
   },
   methods: {
     askName: function() {
-      while (this.clientname == "")
+      while (this.clientname == "") {
         this.clientname = prompt("Enter your name: ")
+      }
+      this.$emit('name', this.clientname)
     },
     putShips: function() {
       var i = 0
       var content = ""
       for (; i < this.ships.length; ++i) {
-          content += "<div>Length: " + this.ships[i] + ' ; Name: ' + this.shipNames[i] + ' ; Coord : ' + this.shipCoord[2*i ] + ' , ' + this.shipCoord[2 * i + 1] + "</div>"
+          content += "<div>" + this.shipNames[i] + ': length -> ' + this.ships[i] + ' ; Coord -> ' + this.shipCoord[2*i ] + ' | ' + this.shipCoord[2 * i + 1] + ' ; color -> ' + this.shipColor[i] + "</div>"
       }
       this.info = content
       if (this.counter < this.shipCoord.length) {
-        this.status = "<div style=\"color: red; text-align: center;\">Choose a starting point for your " + (this.counter % 2 == 0 ? this.shipNames[this.counter/2] : this.shipNames[this.counter/2-0.5]) + "</div>"
-      } else {
-          this.status = "<div style=\"color: red; text-align: center;\">All boats placed</div>"
+        if (this.counter % 2 == 0) {
+          this.status = "<div style=\"color: red; text-align: center;\">Choose a starting point for your " + this.shipNames[this.counter/2] + "</div>"
+        } else {
+          this.status = "<div style=\"color: red; text-align: center;\">Choose an ending point for your " + this.shipNames[(this.counter - 1) / 2] + "</div>"
         }
-      // TODO: handle click on the buttons
+      } else {
+        this.status = "<div style=\"color: red; text-align: center;\">All boats placed</div>"
+      }
     },
     handleClick: function(x, y) {
       if (this.counter < this.shipCoord.length) {
         if (this.counter % 2 != 0) {
+          if (this.crossing(x, y)) {
+            this.status = "<div style=\"color: red; text-align: center;\">" + this.shipNames[(this.counter - 1) /2] + " is misplaced : over another ship</div>"
+            this.counter--
+            return
+          }
           var size = this.ships[this.counter/2-0.5]
           if (Math.abs(this.shipCoord[this.counter-1][0] - x) != size - 1 && Math.abs(this.shipCoord[this.counter-1][1] - y) != size - 1) {
             this.status = "<div style=\"color: red; text-align: center;\">" + this.shipNames[(this.counter - 1) /2] + " is misplaced</div>"
             this.counter--
             return
+          } else {
+            this.colorShips(x,y)
           }
         }
-        if (this.crossing()) {
-          this.status = "<div style=\"color: red; text-align: center;\">" + this.shipNames[(this.counter - 1) /2] + " is misplaced : over another ship</div>"
-          return
-        }
+
         this.shipCoord[this.counter][0] = x
         this.shipCoord[this.counter][1] = y
         this.counter++
         this.putShips()
       }
     },
-    crossing: function() {
+    crossing: function(x,y) {
+      var x_origin = this.shipCoord[this.counter-1][0]
+      var y_origin = this.shipCoord[this.counter-1][1]
+      var segment = []
+      if (x != x_origin) {
+        for (var i = Math.min(x, x_origin); i <= Math.max(x, x_origin); ++i) {
+          segment.push([i,y]);
+        }
+      } else {
+        for (var i = Math.min(y, y_origin); i <= Math.max(y, y_origin); ++i) {
+          segment.push([x,i]);
+        }
+      }
+      console.log("Segment = " + segment);
+      for (var i = 0; i < this.counter-1; i+=2) {
+        var segment2 = []
+        if (this.shipCoord[i][0] != this.shipCoord[i+1][0]) {
+          for (var k = Math.min(this.shipCoord[i][0], this.shipCoord[i+1][0]); k <= Math.max(this.shipCoord[i][0], this.shipCoord[i+1][0]); ++k) {
+            segment2.push([k,this.shipCoord[i][1]])
+          }
+        } else {
+          for (var k = Math.min(this.shipCoord[i][1], this.shipCoord[i+1][1]); k <= Math.max(this.shipCoord[i][1], this.shipCoord[i+1][1]); ++k) {
+            segment2.push([this.shipCoord[i][0],k])
+          }
+        }
+        console.log("Segment2 = " + segment2);
+        if (this.coordArrEquals(segment, segment2)) {
+          return true;
+        }
+      }
       return false;
-      // TODO:
+    },
+    colorShips: function(x,y) {
+      if (x < this.shipCoord[this.counter-1][0]) {
+        for (var i = x; i <= this.shipCoord[this.counter-1][0]; ++i) {
+          document.querySelector('#' + this.items[i][y]).style.background = this.shipColor[(this.counter-1)/2]
+        }
+      } else if (x > this.shipCoord[this.counter-1][0]) {
+        for (var i = x; i >= this.shipCoord[this.counter-1][0]; --i) {
+          document.querySelector('#' + this.items[i][y]).style.background = this.shipColor[(this.counter-1)/2]
+        }
+      } else if (y > this.shipCoord[this.counter-1][1]) {
+        for (var i = y; i >= this.shipCoord[this.counter-1][1]; --i) {
+          document.querySelector('#' + this.items[x][i]).style.background = this.shipColor[(this.counter-1)/2]
+        }
+      } else if (y < this.shipCoord[this.counter-1][1]) {
+        for (var i = y; i <= this.shipCoord[this.counter-1][1]; ++i) {
+          document.querySelector('#' + this.items[x][i]).style.background = this.shipColor[(this.counter-1)/2]
+        }
+      }
+    },
+    coordArrEquals: function(a, b) {
+      for (var i = 0; i < a.length; i++) {
+        for (var j = 0; j < b.length; j++) {
+          var k = 0
+          var l = 0
+          while (a[i][k] == b[j][l]) {
+            l++
+            k++
+            if (k == a[i].length) {
+              return true
+            }
+          }
+        }
+      }
     }
   },
 }
@@ -112,5 +203,8 @@ export default {
 <style lang="css" scoped>
   .blue {
     color: blue;
+  }
+  .marked_c {
+    background-color: red;
   }
 </style>

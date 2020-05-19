@@ -5,10 +5,6 @@ import Game from './Game.vue'
 
 Vue.config.productionTip = false
 
-const User = {
-  template: '<div>User {{ $route.params.id }}</div>'
-}
-
 const routes = {
   '/': App,
   '/game': Game
@@ -18,6 +14,8 @@ new Vue({
   el: '#app',
   data: {
     currentRoute: window.location.pathname,
+    test: 'Je suis un test'
+
   },
   computed: {
     ViewComponent () {
@@ -26,5 +24,16 @@ new Vue({
       return routes[this.currentRoute] || NotFound
     }
   },
-  render (h) { return h(this.ViewComponent) }
+  methods : {
+    change : function(test) {
+      this.test = name
+    }
+  },
+  render (h) {
+    return h(this.ViewComponent, {
+      attrs: {
+        test: this.test
+      }
+    })
+  }
 })

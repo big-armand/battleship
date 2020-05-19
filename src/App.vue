@@ -1,7 +1,7 @@
 <template>
   <div>
     <h1>{{ title }}</h1>
-    <a v-bind:href="url + getId()">Click me!</a>
+    <a v-bind:href="url + getId()">Create Game</a>
   </div>
 </template>
 
@@ -11,7 +11,7 @@ export default {
   data() {
     return {
       title: 'Battleship',
-      url: 'game'
+      url: 'game',
     }
   },
   methods: {
