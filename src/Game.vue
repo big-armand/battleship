@@ -1,9 +1,8 @@
 <template lang="html">
   <div>
-    <h1>Page Loaded with id : {{ idUrl }}</h1>
+    <h1>Game id : {{ gameId }}</h1>
     <h2>{{ clientname }}</h2>
     <h2>Opponent's name : {{opponentName}}</h2>
-    <h2>Test : {{test}}</h2>
     <table class="table table-responsive blue">
       <thead>
         <tr>
@@ -24,17 +23,14 @@
       <span v-html="info"></span>
       <span v-html="status"></span>
     </div>
-    <div @name="console.log('WORKED')">
-
-    </div>
   </div>
 </template>
 
 <script>
 export default {
   props: [
-    'test',
-    'name'
+    'gameId',
+    'opponentName'
   ],
   data() {
     return {
@@ -43,7 +39,6 @@ export default {
       info: "",
       status: "",
       clientname : "",
-      opponentName: "",
       char: ['A','B','C','D','E','F','G','H','I','J'],
       items:[
          ['A1','A2','A3','A4','A5','A6','A7','A8','A9','A10'],
