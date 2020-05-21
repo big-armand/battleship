@@ -15,7 +15,6 @@
     <div>
       <game-tile v-if="id != 0" :gameId="id" :opponentName="opName" @name="setName"></game-tile>
     </div>
-    <div>{{opName}}</div>
   </div>
 </template>
 

@@ -3,6 +3,10 @@
     <h1>Game id : {{ gameId }}</h1>
     <h2>{{ clientname }}</h2>
     <h2>Opponent's name : {{opponentName}}</h2>
+    <div id="app">
+      <span v-html="info"></span>
+      <span v-html="status"></span>
+    </div>
     <table class="table table-responsive blue">
       <thead>
         <tr>
@@ -14,14 +18,30 @@
         <tr v-for="(row, idx1) in items">
           <th scope="row">{{ char[idx1] }}</th>
           <td v-for="(col, idx2) in row">
-             <button :id="items[idx1][idx2]" :class="computeClasses " @click="handleClick(idx1, idx2)">{{ items[idx1][idx2] }}</button>
+             <button :id="items[idx1][idx2]" @click="handleClick(idx1, idx2)">{{ items[idx1][idx2] }}</button>
           </td>
         </tr>
       </tbody>
     </table>
-    <div id="app">
-      <span v-html="info"></span>
-      <span v-html="status"></span>
+    <div v-if="begin">
+      <h2 v-if="won == ''">Attack grid {{turn}}'s turn</h2>
+      <h2 v-else class="success">{{won}} won!!</h2>
+      <table class="table table-responsive blue">
+        <thead>
+          <tr>
+            <td></td>
+            <th v-for="(col, idx2) in items" scope="col">{{ idx2 + 1 }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(row, idx1) in items">
+            <th scope="row">{{ char[idx1] }}</th>
+            <td v-for="(col, idx2) in row">
+              <button :id="'x' + items[idx1][idx2]" @click="attack(idx1, idx2)">{{ items[idx1][idx2] }}</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
@@ -56,21 +76,56 @@ export default {
       shipColor: ['yellow', 'blue', 'lightblue', 'pink', 'orange'],
       shipNames: ['Carrier', 'Battleship', 'Destroyer', 'Submarine', 'Patrol Boat'],
       shipCoord: [ [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1], [-1,-1] ],
-      carrier: false,
-      battleship: false,
+      begin: false,
+      turn: '',
+      hitPoints: [],
+      won: ""
     }
   },
-  computed: {
-    idUrl: function () {
-      return window.location.pathname.split('/game')[1] || 0
+  sockets: {
+    begin: function (id, name) {
+      if (this.gameId == id) {
+        this.begin = true
+        this.turn = name
+      }
     },
-    computeClasses: function() {
-      return {marked_c: this.carrier, marked_b: this.battleship}
+    attacked: function (id, name, x, y) {    
+      if (id == this.gameId) {
+        this.hitPoints.push([x, y])
+        if (this.onShip(x, y)) {
+          document.querySelector('#' + this.items[x][y]).style.background = 'red'
+          this.$socket.client.emit('hit', this.gameId, this.clientname, x, y)
+          if (this.hasWon()) {
+            this.$socket.client.emit('win', this.gameId, this.opponentName)
+          }
+        } else {
+          document.querySelector('#' + this.items[x][y]).style.background = 'green'
+        }
+      }
+    },
+    turn: function (id, name) {
+      if (this.gameId == id) {
+        this.turn = name
+      }
+    },
+    hit: function (id, name, x, y) {
+      if (this.gameId == id && name != this.clientname) {
+        document.querySelector('#x' + this.items[x][y]).style.background = 'green'
+      }
+    },
+    winner: function (id, name) {
+      console.log('potato');
+      
+      if (this.gameId == id) {
+        this.won = name
+      }
     }
   },
   mounted: function() {
     this.askName()
-    this.putShips()
+    this.putShipsAlert()
+    //this.$socket.client.emit('shipsPlaced', this.id, name)
+
     // while (this.isOn()) {
     //   this.attack()
     //   // allow other to attack
@@ -84,7 +139,7 @@ export default {
       }
       this.$emit('name', this.clientname)
     },
-    putShips: function() {
+    putShipsAlert: function() {
       var i = 0
       var content = ""
       for (; i < this.ships.length; ++i) {
@@ -99,6 +154,7 @@ export default {
         }
       } else {
         this.status = "<div style=\"color: red; text-align: center;\">All boats placed</div>"
+        this.$socket.client.emit('shipsPlaced', this.gameId, this.clientname)
       }
     },
     handleClick: function(x, y) {
@@ -122,7 +178,7 @@ export default {
         this.shipCoord[this.counter][0] = x
         this.shipCoord[this.counter][1] = y
         this.counter++
-        this.putShips()
+        this.putShipsAlert()
       }
     },
     crossing: function(x,y) {
@@ -138,7 +194,6 @@ export default {
           segment.push([x,i]);
         }
       }
-      console.log("Segment = " + segment);
       for (var i = 0; i < this.counter-1; i+=2) {
         var segment2 = []
         if (this.shipCoord[i][0] != this.shipCoord[i+1][0]) {
@@ -150,7 +205,6 @@ export default {
             segment2.push([this.shipCoord[i][0],k])
           }
         }
-        console.log("Segment2 = " + segment2);
         if (this.coordArrEquals(segment, segment2)) {
           return true;
         }
@@ -190,6 +244,49 @@ export default {
           }
         }
       }
+    },
+    attack: function(x, y) {
+      if (this.turn == this.clientname) {
+        document.querySelector('#x' + this.items[x][y]).style.background = 'white'
+        this.$socket.client.emit('attack', this.gameId, this.clientname, x, y)
+      }
+    },
+    onShip: function(x, y) {
+      for (var c = 0; c < this.shipCoord.length; c+=2) {        
+        if (this.onShipArr(this.shipCoord[c], this.shipCoord[c+1], x, y)) {
+          return true
+        }
+      }
+      return false
+    },
+    onShipArr: function (p1, p2, x, y) {
+      if (p1[1] == p2[1] && p1[1] == y) {
+        for (var i = Math.min(p1[0], p2[0]); i <= Math.max(p1[0], p2[0]); ++i) {
+          if (i == x) {
+            return true
+          }
+        }
+      }
+      if (p1[0] == p2[0] && p1[0] == x) {
+        for (var i = Math.min(p1[1], p2[1]); i <= Math.max(p1[1], p2[1]); ++i) {
+          if (i == y) {
+            return true
+          }
+        }
+      }
+      return false
+    },
+    hasWon: function () {
+      var bool
+      for (var c = 0; c < this.shipCoord.length; c++) {
+        bool = false
+        for (var k = 0; k < this.hitPoints.length; k++) {
+          bool |= this.hitPoints[k][0] == this.shipCoord[c][0] && this.hitPoints[k][1] == this.shipCoord[c][1]
+        }
+        if (!bool)
+          return false
+      }
+      return true
     }
   },
 }
@@ -199,7 +296,8 @@ export default {
   .blue {
     color: blue;
   }
-  .marked_c {
-    background-color: red;
+  .success {
+    color:pink;
+    background-color: black;
   }
 </style>
